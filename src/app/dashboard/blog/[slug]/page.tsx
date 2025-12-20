@@ -12,6 +12,7 @@ async function fetchDetailPost(id: string) {
   return post;
 }
 
+
 export default async function BlogPage({
   params,
 }: {
@@ -19,9 +20,7 @@ export default async function BlogPage({
 }) {
   const { slug } = await params;
   const post = await fetchDetailPost(slug);
-
   console.log(post);
-
   return (
     <div className="p-6">
       <PostCard id={post.id} userId={post.userId} title={post.title} />

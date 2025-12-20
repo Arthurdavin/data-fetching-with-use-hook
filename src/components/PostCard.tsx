@@ -6,17 +6,17 @@ export default function PostCard({
   userId = 0,
   id = 0,
   title = "Default title",
-  body ="No body"
+  body = "No body",
 }: PostCardProps) {
   return (
     <div className="block rounded-md border border-gray-300 p-4 shadow-sm sm:p-6">
       <div className="sm:flex sm:justify-between sm:gap-4 lg:gap-6">
         <div className="mt-4 sm:mt-0">
-          <h3 className="line-clamp-1 text-lg font-medium text-gray-900">{title}</h3>
+          <h3 className="line-clamp-1 text-lg font-medium text-gray-900">
+            {title}
+          </h3>
           <p className="mt-1 text-sm text-gray-700">{id}</p>
-          <p className="mt-4 line-clamp-2 text-sm text-gray-700">
-            {body}
-          </p>
+          <p className="mt-4 line-clamp-2 text-sm text-gray-700">{body}</p>
         </div>
       </div>
 

@@ -1,6 +1,6 @@
-export type PostRespon ={
+export type PostRespon = {
     id: number;
     title:string;
-    userId:number;
+    userId: number;
     body: string;
 }
