@@ -1,7 +1,7 @@
-import { PostRespon } from "@/app/lib/post";
+import { PostResponse } from "@/lib/types/posts";
 
-type PostCardProps = Partial<PostRespon>;
-
+type PostCardProps = Partial<PostResponse>;
+// destructuring({name, age}:type){}
 export default function PostCard({
   userId = 0,
   id = 0,
