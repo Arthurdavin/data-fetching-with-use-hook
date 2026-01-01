@@ -1,12 +1,13 @@
-import { PostRespon } from "@/app/lib/post";
+
 import PostCard from "@/components/PostCard";
+import { PostResponse } from "@/lib/types/posts";
 
 async function fetchDetailPost(id: string) {
   const BASE_API = process.env.NEXT_PUBLIC_API_URL;
   // if (!BASE_API) throw new Error("NEXT_PUBLIC_API_URL is not defined");
   const res = await fetch(`${BASE_API}posts/${id}`);
   // if (!res.ok) throw new Error("Failed to fetch post detail");
-  const post: PostRespon = await res.json();
+  const post: PostResponse = await res.json();
   return post;
 }
 
