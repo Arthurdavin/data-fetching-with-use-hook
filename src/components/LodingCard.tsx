@@ -2,23 +2,43 @@ import { Skeleton } from "./ui/skeleton";
 
 // function LoadingCard({ count = 15 }: LoadingCardProps) This is a default value.
 
-interface LoadingCardProps {
-  count?: number;
-}
+// interface LoadingCardProps{
+//   count?:number;
+// }
 
-export default function LoadingCard({ count = 15 }: LoadingCardProps) {
+// export default function LoadingCard({ count = 15 }: LoadingCardProps) {
+//   return (
+//     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+//       {Array.from({ length: count }).map((_, index) => (
+//         <div key={index} className="flex flex-col space-y-3">
+//           <Skeleton className="w-full aspect-5/2 rounded-xl" />
+//           <div className="space-y-2">
+//             <Skeleton className="h-4 w-full rounded" />
+//             <Skeleton className="h-4 w-3/4 rounded" />
+//           </div>
+//         </div>
+//       ))}
+//     </div>
+//   );
+// }
+
+export default function LoadingCard() {
+  
+  // const cards = Array(8).fill(null);
+  const cards = Array(8).fill(null);
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-      {Array.from({ length: count }).map((_, index) => (
+
+    <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 mx-10 pt-10">
+      {cards.map((_, index) => (
         <div key={index} className="flex flex-col space-y-3">
-          <Skeleton className="w-full aspect-5/2 rounded-xl" />
-          <div className="space-y-2">
-            <Skeleton className="h-4 w-full rounded" />
-            <Skeleton className="h-4 w-3/4 rounded" />
-          </div>
+        <Skeleton className="w-full h-40 rounded-xl" />
+        <div className="space-y-2">
+          <Skeleton className="h-4 w-full" />
+          <Skeleton className="h-4 w-full" />
+          <Skeleton className="h-4 w-3/4" />
         </div>
+      </div>
       ))}
     </div>
   );
 }
-

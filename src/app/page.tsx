@@ -1,5 +1,6 @@
 import { CardClientList } from "@/components/CardClientList";
 import LoadingCard from "@/components/LodingCard";
+import RegisterForm from "@/components/register-form";
 import { fetchPosts } from "@/lib/data/fetchPost";
 
 
@@ -21,9 +22,10 @@ export default function Home() {
       /> */}
 
       {/* <CardClientList/> */}
-      <CardClientList fetchPosts={fetchPosts()}/>
+      {/* <CardClientList fetchPosts={fetchPosts()}/> */}
       {/* <LoadingCard/> */}
       {/* <LoadingCard count={15}/> */}
+      <RegisterForm/>
     </div>
   );
 }

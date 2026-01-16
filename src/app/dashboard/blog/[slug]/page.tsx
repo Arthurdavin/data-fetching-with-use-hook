@@ -11,20 +11,18 @@ async function fetchDetailPost(id: string) {
   return post;
 }
 
-export default async function BlogPage({
-  params,
-}: {
-  params: { slug: string };
-}) {
-  const { slug } = await params;
+export default async function BlogPage({params}:{params:{slug:string};}){
+  const {slug} = await params;
   const post = await fetchDetailPost(slug);
-  console.log(post);
-  return (
+  return(
     <div className="p-6">
-      <PostCard 
-      id={post.id} 
-      userId={post.userId} 
-      title={post.title} />
+      <PostCard
+      key={post.id}
+      id={post.id}
+      userId={post.userId}
+      title={post.title}
+      body={post.body}
+      />
     </div>
-  );
+  )
 }
