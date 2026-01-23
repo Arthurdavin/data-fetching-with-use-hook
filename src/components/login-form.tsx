@@ -17,16 +17,23 @@ import {
 import { Input } from "./ui/input";
 
 /* ✅ Zod Schema */
+// const formSchema = z.object({
+//   email: z
+//     .email("Invalid email address")
+//     .nonempty("Please enter your email"),
+//   password: z
+//     .string()
+//     .min(8, "Password must be at least 8 characters"),
+// });
+
 const formSchema = z.object({
-  email: z
-    .email("Invalid email address")
-    .nonempty("Please enter your email"),
-  password: z
-    .string()
-    .min(8, "Password must be at least 8 characters"),
+  email: z.email("Invalid email address").nonempty("Please enter your email"),
+  password: z.string().min(8, "Password must be at least 8 characters"),
 });
 
+
 /* ✅ Type from schema */
+
 type LoginType = z.infer<typeof formSchema>;
 
 export default function LoginForm() {
@@ -43,6 +50,18 @@ export default function LoginForm() {
   function loginSubmit(data: LoginType) {
     console.log("Login data:", data);
   }
+  // const {
+  //   register,
+  //   handleSubmit,
+  //   watch,
+  //   formState: { errors},
+  // }=useForm<z.infer<typeof formSchema>>({
+  //   resolver: zodResolver(formSchema),
+  // });
+
+  // function loginSubmit(data){
+  //   console.log("Login data: ",data);
+  // }
 
   console.log("Email:", watch("email"));
 

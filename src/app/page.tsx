@@ -1,5 +1,6 @@
 import { CardClientList } from "@/components/CardClientList";
 import LoadingCard from "@/components/LodingCard";
+import MyForm from "@/components/product-form";
 import RegisterForm from "@/components/register-form";
 import { fetchPosts } from "@/lib/data/fetchPost";
 

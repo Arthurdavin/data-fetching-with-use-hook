@@ -1,5 +1,5 @@
 "use client";
-import { z } from "zod";
+import { email, z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 
 import { Button } from "./ui/button";
@@ -25,39 +25,32 @@ import {
 import { Input } from "./ui/input";
 import { useForm } from "react-hook-form";
 
-
 const formSchema = z.object({
-  email: z
-    .email("Invalid email")
-    .nonempty("Please enter your email"),
-
-  password: z
-    .string()
-    .min(8, "Password must be at least 8 characters")
-    .regex(/[A-Z]/, {message: "Must contain one uppercase letter"})
-    .regex(/[a-z]/, {message: "Must contain one lowercase letter"})
-    .regex(/[0-9]/, {message: "Must contain one number"})
-    .regex(/[^A-Za-z0-9]/, {message: "Must contain one special character"}),
+  email:z.email("Invalid email").nonempty("Please enter your email"),
+  password: z.string()
+  .min(8,"Password must be at least 8 characters")
+  .regex(/[A-Z]{2}/,{message: "Must contain one uppercase letter"})
+  .regex(/[a-z]{2}/,{message: "Must contain one lowercase letter"})
+  .regex(/[0-9]/,{message: "Must contain one number"})
+  .regex(/[^A-Za-z0-9]/,{message: "Must contain one special character"}),
 });
 
-type RegisterType = z.infer<typeof formSchema>;
+// type RegisterType = z.infer<typeof formSchema>;
 
 
 export default function RegisterForm() {
 
-  const form = useForm<RegisterType>({
+  const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
-    defaultValues: {
-      email: "",
-      password: "",
+    defaultValues:{
+      email: " ",
+      password:" ",
     },
-  });
-  const {
-    handleSubmit,
-    control,
-  }=form;
-  function onSubmit(data: RegisterType) {
-    console.log("Register data:", data);
+  })
+
+  const { handleSubmit, control} = form;
+  function onSubmit(data: z.infer<typeof formSchema>){
+    console.log("Register data: ",data);
   }
 
   return (
@@ -88,7 +81,7 @@ export default function RegisterForm() {
                   <FormControl>
                     <Input
                       type="email"
-                      placeholder="m@example.com"
+                      placeholder="youremail@example.com"
                       {...field}
                     />
                   </FormControl>
@@ -105,7 +98,7 @@ export default function RegisterForm() {
                 <FormItem>
                   <FormLabel>Password</FormLabel>
                   <FormControl>
-                    <Input type="password" placeholder="***" {...field} />
+                    <Input type="password" placeholder="********" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
