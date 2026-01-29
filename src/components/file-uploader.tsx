@@ -232,6 +232,7 @@ export function FileUploader(props: FileUploaderProps) {
                   <p className='text-muted-foreground font-medium'>
                     Drag {`'n'`} drop files here, or click to select files
                   </p>
+                  {/* ff */}
                   <p className='text-muted-foreground/70 text-sm'>
                     You can upload
                     {maxFiles > 1
