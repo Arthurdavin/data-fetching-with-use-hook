@@ -17,8 +17,6 @@ import {
 
 import {
   Field,
-  FieldContent,
-  FieldDescription,
   FieldError,
   FieldGroup,
   FieldLabel,
@@ -40,6 +38,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+
 import ImageUpload from "./image-upload";
 import { uploadImageServer } from "@/lib/data/upload-file";
 
@@ -49,21 +48,18 @@ import { uploadImageServer } from "@/lib/data/upload-file";
 const formSchema = z.object({
   title: z
     .string()
-    .min(5, "Bug title must be at least 5 characters.")
-    .max(200, "Bug title must be at most 200 characters."),
-
+    .min(5, "Title must be at least 5 characters.")
+    .max(200, "Title must be at most 200 characters."),
   price: z.coerce.number().positive("Price must be a positive number"),
-
   category: z
     .string()
     .min(1, "Please select a category.")
     .refine((val) => val !== "auto", {
       message: "Please select a specific category.",
     }),
-
   description: z
     .string()
-    .min(10, "Description must be at least 20 characters.")
+    .min(10, "Description must be at least 10 characters.")
     .max(100, "Description must be at most 100 characters."),
   images: z
     .array(z.instanceof(File))
@@ -73,7 +69,7 @@ const formSchema = z.object({
 type FormValues = z.infer<typeof formSchema>;
 
 /* ---------------------------------- */
-/* SAMPLE DATA */
+/* TYPES & CONSTANTS */
 /* ---------------------------------- */
 interface ImageFile {
   id: string;
@@ -101,71 +97,87 @@ export function InsertHookForm() {
       price: 0,
       category: "",
       description: "",
+      images: [],
     },
   });
 
-  const onhandleImageChage = async (images: ImageFile[]) => {
-    // console.log('images: ',images)
-    const formData = new FormData();
-    for (const image of images) {
-      formData.append("file", image.file);
-      const res = await uploadImageServer(formData);
-      console.log("res", res);
-    }
+  // Connects the ImageUpload component to React Hook Form
+  const onhandleImageChange = (images: ImageFile[]) => {
+    const files = images.map((img) => img.file);
+    form.setValue("images", files, { shouldValidate: true });
   };
 
-  // function onSubmit(data: FormValues) {
-  //   toast("Submitted successfully!", {
-  //     description: (
-  //       <pre className="mt-2 w-[320px] rounded-md bg-muted p-4 text-sm">
-  //         {JSON.stringify(data, null, 2)}
-  //       </pre>
-  //     ),
-  //   });
-  // }
-
-  // fig on submit
   async function onSubmit(data: FormValues) {
-  try {
-    const uploadedImages: string[] = [];
+    const loadingToast = toast.loading("Uploading product and images...");
+    
+    try {
+      // 1. Map through images and upload each
+      const uploadPromises = data.images.map(async (file) => {
+        const formData = new FormData();
+        formData.append("file", file);
 
-    for (const file of data.images) {
-      const formData = new FormData();
-      formData.append("file", file);
+        // This calls your Axios function
+        const res = await uploadImageServer(formData);
+        
+        console.log("Axios API Response:", res);
 
-      const res = await uploadImageServer(formData);
-      uploadedImages.push(res.url); // adjust based on your API
+        /**
+         * URL EXTRACTION LOGIC
+         * Depending on your API, the URL might be in different places.
+         * Common keys: url, location, link, or the first item of an array.
+         */
+        const extractedUrl = 
+          res?.location || 
+          res?.url || 
+          res?.link || 
+          (Array.isArray(res) ? res[0]?.location || res[0]?.url : null);
+
+        if (!extractedUrl) {
+          throw new Error("API success, but no URL found in response");
+        }
+
+        return extractedUrl;
+      });
+
+      // 2. Wait for all uploads to finish
+      const imageUrls = await Promise.all(uploadPromises);
+
+      // 3. Create the final object to send to your Database
+      const finalPayload = {
+        ...data,
+        images: imageUrls, // Replaces File[] with string[] (URLs)
+      };
+
+      toast.dismiss(loadingToast);
+      toast.success("Submission Successful!");
+
+      console.log("FINAL DATA FOR DATABASE:", finalPayload);
+
+      // Show final result in a toast
+      toast("Payload Sent", {
+        description: (
+          <pre className="mt-2 w-full rounded-md bg-slate-900 p-4 text-white text-[10px] overflow-x-auto">
+            {JSON.stringify(finalPayload, null, 2)}
+          </pre>
+        ),
+      });
+
+    } catch (error: any) {
+      toast.dismiss(loadingToast);
+      toast.error(error.message || "Failed to submit form");
+      console.error("Submit Error:", error);
     }
-
-    const payload = {
-      ...data,
-      images: uploadedImages,
-    };
-
-    toast("Submitted successfully!", {
-      description: (
-        <pre className="mt-2 w-[320px] rounded-md bg-muted p-4 text-sm">
-          {JSON.stringify(payload, null, 2)}
-        </pre>
-      ),
-    });
-  } catch (error) {
-    toast.error("Image upload failed");
   }
-}
-
 
   return (
-    <Card className="w-2/4">
+    <Card className="w-full max-w-2xl mx-auto mt-10">
       <CardHeader>
-        <CardTitle>Product Form</CardTitle>
-        <CardDescription>
-          Help us improve by reporting bugs you encounter.
-        </CardDescription>
+        <CardTitle>Create Product</CardTitle>
+        <CardDescription>Upload images and provide product details.</CardDescription>
       </CardHeader>
 
       <CardContent>
-        <form id="bug-form" onSubmit={form.handleSubmit(onSubmit)}>
+        <form id="product-form" onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
           <FieldGroup>
             {/* TITLE */}
             <Controller
@@ -173,37 +185,27 @@ export function InsertHookForm() {
               control={form.control}
               render={({ field, fieldState }) => (
                 <Field data-invalid={fieldState.invalid}>
-                  <FieldLabel>Product Title</FieldLabel>
-                  <Input {...field} placeholder="Login button not working" />
-                  {fieldState.invalid && (
-                    <FieldError errors={[fieldState.error]} />
-                  )}
+                  <FieldLabel>Title</FieldLabel>
+                  <Input {...field} placeholder="Product name..." />
+                  {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
                 </Field>
               )}
             />
 
-            {/* PRICE */}
-            <div className="flex gap-4">
+            <div className="grid grid-cols-2 gap-4">
               {/* PRICE */}
               <Controller
                 name="price"
                 control={form.control}
                 render={({ field, fieldState }) => (
                   <Field data-invalid={fieldState.invalid}>
-                    <FieldLabel>Product Price</FieldLabel>
+                    <FieldLabel>Price</FieldLabel>
                     <Input
                       type="number"
                       value={field.value}
-                      onChange={(e) =>
-                        field.onChange(
-                          e.target.value === "" ? 0 : Number(e.target.value),
-                        )
-                      }
-                      placeholder="100"
+                      onChange={(e) => field.onChange(e.target.value === "" ? 0 : Number(e.target.value))}
                     />
-                    {fieldState.invalid && (
-                      <FieldError errors={[fieldState.error]} />
-                    )}
+                    {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
                   </Field>
                 )}
               />
@@ -214,34 +216,18 @@ export function InsertHookForm() {
                 control={form.control}
                 render={({ field, fieldState }) => (
                   <Field data-invalid={fieldState.invalid}>
-                    <FieldContent>
-                      <FieldLabel>Spoken Language</FieldLabel>
-                      <FieldDescription>
-                        For best results, select the language you speak
-                      </FieldDescription>
-                      {fieldState.invalid && (
-                        <FieldError errors={[fieldState.error]} />
-                      )}
-                    </FieldContent>
-
-                    <Select
-                      name={field.name}
-                      value={field.value}
-                      onValueChange={field.onChange}
-                    >
+                    <FieldLabel>Category</FieldLabel>
+                    <Select value={field.value} onValueChange={field.onChange}>
                       <SelectTrigger>
-                        <SelectValue placeholder="Select category" />
+                        <SelectValue placeholder="Select" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="auto">Auto</SelectItem>
-                        <SelectSeparator />
                         {categories.map((c) => (
-                          <SelectItem key={c.value} value={c.value}>
-                            {c.label}
-                          </SelectItem>
+                          <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
+                    {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
                   </Field>
                 )}
               />
@@ -254,49 +240,38 @@ export function InsertHookForm() {
               render={({ field, fieldState }) => (
                 <Field data-invalid={fieldState.invalid}>
                   <FieldLabel>Description</FieldLabel>
-
                   <InputGroup>
-                    <InputGroupTextarea
-                      {...field}
-                      rows={5}
-                      placeholder="I'm having an issue with the login button on mobile."
-                    />
+                    <InputGroupTextarea {...field} rows={4} />
                     <InputGroupAddon align="block-end">
-                      <InputGroupText>
-                        {field.value.length}/100 characters
-                      </InputGroupText>
+                      <InputGroupText>{field.value.length}/100</InputGroupText>
                     </InputGroupAddon>
                   </InputGroup>
-
-                  {fieldState.invalid && (
-                    <FieldError errors={[fieldState.error]} />
-                  )}
+                  {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
                 </Field>
               )}
             />
+
+            {/* IMAGES */}
+            <div className="space-y-2">
+              <FieldLabel>Images</FieldLabel>
+              <ImageUpload onImagesChange={onhandleImageChange} />
+              {form.formState.errors.images && (
+                <p className="text-sm font-medium text-destructive">
+                  {form.formState.errors.images.message}
+                </p>
+              )}
+            </div>
           </FieldGroup>
-          {/* pass by reference */}
-          {/* <ImageUpload onImagesChange={(i)=>onhandleImageChage(i)}/> */}
-          <ImageUpload onImagesChange={onhandleImageChage} />
         </form>
       </CardContent>
 
-      <CardFooter className="flex flex-col items-start gap-3">
-        {/* Helper / placeholder text */}
-        <p className="text-sm text-muted-foreground">
-          Include steps to reproduce, expected behavior, and what actually
-          happened.
-        </p>
-
-        {/* Action buttons */}
-        <div className="flex gap-2">
-          <Button type="button" variant="outline" onClick={() => form.reset()}>
-            Reset
-          </Button>
-          <Button type="submit" form="bug-form">
-            Submit
-          </Button>
-        </div>
+      <CardFooter className="flex justify-end gap-2">
+        <Button type="button" variant="outline" onClick={() => form.reset()}>
+          Reset
+        </Button>
+        <Button type="submit" form="product-form">
+          Submit
+        </Button>
       </CardFooter>
     </Card>
   );
