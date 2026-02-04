@@ -1,5 +1,3 @@
-
-import FormProductCopy from "@/components/form-product";
 import { InsertHookForm } from "@/components/insert-form";
 
 export default function ProductForm() {

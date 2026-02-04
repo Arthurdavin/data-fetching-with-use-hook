@@ -1,11 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { toast } from "sonner";
-import axios from "axios";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -27,8 +26,6 @@ import {
 import { Input } from "@/components/ui/input";
 import {
   InputGroup,
-  InputGroupAddon,
-  InputGroupText,
   InputGroupTextarea,
 } from "@/components/ui/input-group";
 
@@ -42,48 +39,28 @@ import {
 
 import ImageUpload from "./image-upload";
 import { uploadImageServer } from "@/lib/data/upload-file";
+import { fetchCategory, insertProduct } from "@/lib/data/fetchPost";
 
-const baseAPI = process.env.NEXT_PUBLIC_API;
-
-/* ---------------------------------- */
-/* TYPES */
-/* ---------------------------------- */
-interface Category {
-  id: string | number;
-  name: string;
-}
-
-interface ImageFile {
-  id: string;
-  file: File;
-  preview: string;
-  progress: number;
-  status: "uploading" | "completed" | "error";
-  error?: string;
-}
-
-/* ---------------------------------- */
-/* ZOD SCHEMA */
-/* ---------------------------------- */
+/* ---------- VALIDATION SCHEMA ---------- */
 const formSchema = z.object({
-  title: z
-    .string()
-    .min(5, "Title must be at least 5 characters.")
-    .max(200, "Title must be at most 200 characters."),
-  price: z.coerce.number().positive("Price must be a positive number"),
-  category: z.string().min(1, "Please select a category."),
-  description: z
-    .string()
-    .min(10, "Description must be at least 10 characters.")
-    .max(100, "Description must be at most 100 characters."),
-  images: z.array(z.instanceof(File)).min(1, "At least one image is required"),
+  title: z.string().min(5),
+  price: z.coerce.number().positive(),
+  category: z.string().min(1),
+  description: z.string().min(10),
+  images: z.array(z.instanceof(File)).min(1),
 });
 
 type FormValues = z.infer<typeof formSchema>;
 
-/* ---------------------------------- */
-/* COMPONENT */
-/* ---------------------------------- */
+interface Category {
+  id: number;
+  name: string;
+}
+
+interface ImageFile {
+  file: File;
+}
+
 export function InsertHookForm() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [isLoadingCats, setIsLoadingCats] = useState(true);
@@ -99,79 +76,54 @@ export function InsertHookForm() {
     },
   });
 
-  // 1. Fetch categories from API on component mount
+  // ========== LOAD CATEGORIES ==========
   useEffect(() => {
-    async function getCategories() {
-      try {
-        setIsLoadingCats(true);
-        const response = await axios.get(`${baseAPI}/api/v1/categories`);
-        // Note: If your API returns { data: [...] }, use response.data.data
-        setCategories(response.data);
-      } catch (error) {
-        toast.error("Failed to load categories");
-        console.error("Fetch categories error:", error);
-      } finally {
+    fetchCategory()
+      .then((data) => {
+        setCategories(data);
         setIsLoadingCats(false);
-      }
-    }
-    getCategories();
+      })
+      .catch(() => {
+        toast.error("Failed to load categories");
+        setIsLoadingCats(false);
+      });
   }, []);
 
-  // 2. Handle image changes from the ImageUpload component
-  const onhandleImageChange = (images: ImageFile[]) => {
-    const files = images.map((img) => img.file);
-    form.setValue("images", files, { shouldValidate: true });
-  };
-
-  // 3. Form Submission
+  // ========== SUBMIT FORM ==========
   async function onSubmit(data: FormValues) {
-    const loadingToast = toast.loading("Processing submission...");
+    const loadingToast = toast.loading("Uploading images...");
+    const uploadedUrls: string[] = [];
+
+    // Upload images one by one
+    for (const file of data.images) {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const res = await uploadImageServer(formData);
+      const url = res?.data?.location || res?.location || res?.url;
+
+      if (url) uploadedUrls.push(url);
+    }
+
+    toast.dismiss(loadingToast);
+
+    // ===== FINAL PAYLOAD (MATCH ESCUELA API) =====
+    const finalPayload = {
+      title: data.title,
+      price: data.price,
+      description: data.description,
+      categoryId: Number(data.category), // MUST BE NUMBER
+      images: uploadedUrls,
+    };
+
+    console.log("FINAL PAYLOAD:", finalPayload);
 
     try {
-      // Upload images in parallel and get URLs
-      const uploadPromises = data.images.map(async (file) => {
-        const formData = new FormData();
-        formData.append("file", file);
-
-        const res = await uploadImageServer(formData);
-
-        // Robust extraction for Axios response
-        const url =
-          res?.location ||
-          res?.url ||
-          res?.link ||
-          (Array.isArray(res) ? res[0]?.url : null);
-
-        if (!url) throw new Error("Image upload failed to return a URL");
-        return url;
-      });
-
-      const imageUrls = await Promise.all(uploadPromises);
-
-      // Create final object with URLs instead of File objects
-      const finalPayload = {
-        ...data,
-        images: imageUrls,
-      };
-
-      toast.dismiss(loadingToast);
+      await insertProduct(finalPayload);
       toast.success("Product created successfully!");
-
-      console.log("FINAL PAYLOAD:", finalPayload);
-
-      // Display results
-      toast("Payload Sent", {
-        description: (
-          <pre className="mt-2 w-full rounded-md bg-slate-900 p-4 text-white text-[10px] overflow-x-auto">
-            {JSON.stringify(finalPayload, null, 2)}
-          </pre>
-        ),
-      });
-
-      // form.reset(); // Uncomment to reset form after success
-    } catch (error: any) {
-      toast.dismiss(loadingToast);
-      toast.error(error.message || "Failed to submit form");
+      form.reset();
+    } catch (err) {
+      toast.error("Failed to create product");
     }
   }
 
@@ -180,7 +132,7 @@ export function InsertHookForm() {
       <CardHeader>
         <CardTitle>Create Product</CardTitle>
         <CardDescription>
-          Fill in the details and upload product images.
+          Fill in the details to list a new product.
         </CardDescription>
       </CardHeader>
 
@@ -198,7 +150,7 @@ export function InsertHookForm() {
               render={({ field, fieldState }) => (
                 <Field data-invalid={fieldState.invalid}>
                   <FieldLabel>Product Title</FieldLabel>
-                  <Input {...field} placeholder="Enter product name" />
+                  <Input {...field} />
                   {fieldState.invalid && (
                     <FieldError errors={[fieldState.error]} />
                   )}
@@ -208,6 +160,25 @@ export function InsertHookForm() {
 
             <div className="grid grid-cols-2 gap-4">
               {/* PRICE */}
+              {/* <Controller
+                name="price"
+                control={form.control}
+                render={({ field, fieldState }) => (
+                  <Field data-invalid={fieldState.invalid}>
+                    <FieldLabel>Price ($)</FieldLabel>
+                    <Input
+                      type="number"
+                      {...field}
+                      onChange={(e) =>
+                        field.onChange(Number(e.target.value))
+                      }
+                    />
+                    {fieldState.invalid && (
+                      <FieldError errors={[fieldState.error]} />
+                    )}
+                  </Field>
+                )}
+              /> */}
               <Controller
                 name="price"
                 control={form.control}
@@ -245,13 +216,18 @@ export function InsertHookForm() {
                       <SelectTrigger>
                         <SelectValue
                           placeholder={
-                            isLoadingCats ? "Loading..." : "Select category"
+                            isLoadingCats
+                              ? "Loading..."
+                              : "Select category"
                           }
                         />
                       </SelectTrigger>
                       <SelectContent>
                         {categories.map((c) => (
-                          <SelectItem key={c.id} value={c.id.toString()}>
+                          <SelectItem
+                            key={c.id}
+                            value={c.id.toString()}
+                          >
                             {c.name}
                           </SelectItem>
                         ))}
@@ -273,14 +249,7 @@ export function InsertHookForm() {
                 <Field data-invalid={fieldState.invalid}>
                   <FieldLabel>Description</FieldLabel>
                   <InputGroup>
-                    <InputGroupTextarea
-                      {...field}
-                      rows={4}
-                      placeholder="Describe your product..."
-                    />
-                    <InputGroupAddon align="block-end">
-                      <InputGroupText>{field.value.length}/100</InputGroupText>
-                    </InputGroupAddon>
+                    <InputGroupTextarea {...field} rows={4} />
                   </InputGroup>
                   {fieldState.invalid && (
                     <FieldError errors={[fieldState.error]} />
@@ -290,37 +259,24 @@ export function InsertHookForm() {
             />
 
             {/* IMAGES */}
-            {/* <div className="space-y-2">
-              <FieldLabel>Images</FieldLabel>
-              <ImageUpload onImagesChange={onhandleImageChange} />
-              {form.formState.errors.images && (
-                <p className="text-sm font-medium text-destructive">
-                  {form.formState.errors.images.message as string}
-                </p>
-              )}
-            </div> */}
-            {/* IMAGES SECTION */}
             <Controller
               name="images"
               control={form.control}
               render={({ field, fieldState }) => (
-                <div className="space-y-2">
-                  <FieldLabel>Images</FieldLabel>
-
+                <Field data-invalid={fieldState.invalid}>
+                  <FieldLabel>Product Images</FieldLabel>
                   <ImageUpload
-                    // We pass the raw File objects back to the form state
-                    onImagesChange={(images: ImageFile[]) => {
-                      const files = images.map((img) => img.file);
+                    onImagesChange={(imgs: ImageFile[]) => {
+                      const files = imgs.map((i) => i.file);
                       field.onChange(files);
                     }}
                   />
-
                   {fieldState.invalid && (
-                    <p className="text-sm font-medium text-destructive">
+                    <p className="text-sm text-red-500 mt-2">
                       {fieldState.error?.message}
                     </p>
                   )}
-                </div>
+                </Field>
               )}
             />
           </FieldGroup>
@@ -328,18 +284,18 @@ export function InsertHookForm() {
       </CardContent>
 
       <CardFooter className="flex justify-end gap-2 border-t pt-6">
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => {
-            form.reset();
-            // You might need a ref to clear the ImageUpload UI manually
-          }}
-        >
+        <Button type="button" variant="outline" onClick={() => form.reset()}>
           Reset
         </Button>
-        <Button type="submit" form="product-form">
-          Submit Product
+
+        <Button
+          type="submit"
+          form="product-form"
+          disabled={form.formState.isSubmitting}
+        >
+          {form.formState.isSubmitting
+            ? "Uploading..."
+            : "Submit Product"}
         </Button>
       </CardFooter>
     </Card>

@@ -7,7 +7,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "./ui/button";
 import {
   Card,
-  CardAction,
+  // CardAction,
   CardContent,
   CardDescription,
   CardFooter,
@@ -72,9 +72,9 @@ export default function LoginForm() {
         <CardDescription>
           Enter your email below to login to your account
         </CardDescription>
-        <CardAction>
+        {/* <CardAction>
           <Button variant="link">Sign Up</Button>
-        </CardAction>
+        </CardAction> */}
       </CardHeader>
 
       <CardContent>
